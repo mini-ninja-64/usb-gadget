@@ -150,10 +150,6 @@ impl Function for MsdFunction {
         for (idx, lun) in self.builder.luns.iter().enumerate() {
             let lun_dir_name = Lun::dir_name(idx);
 
-            if idx != 0 {
-                self.dir.create_dir(&lun_dir_name)?;
-            }
-
             self.dir.write(format!("{lun_dir_name}/ro"), if lun.read_only { "1" } else { "0" })?;
             self.dir.write(format!("{lun_dir_name}/cdrom"), if lun.cdrom { "1" } else { "0" })?;
             self.dir.write(format!("{lun_dir_name}/nofua"), if lun.no_fua { "1" } else { "0" })?;

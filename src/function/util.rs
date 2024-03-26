@@ -189,8 +189,8 @@ impl FunctionDir {
     }
 
     /// Path to the specified property.
-    pub fn property_path(&self, name: impl AsRef<Path>) -> Result<PathBuf> {
-        let path = name.as_ref();
+    pub fn property_path(&self, name: &Path) -> Result<PathBuf> {
+        let path = name;
         if path.components().all(|c| matches!(c, Component::Normal(_))) {
             Ok(self.dir()?.join(path))
         } else {
@@ -200,21 +200,21 @@ impl FunctionDir {
 
     /// Create a subdirectory.
     pub fn create_dir(&self, name: impl AsRef<Path>) -> Result<()> {
-        let path = self.property_path(name)?;
+        let path = self.property_path(name.as_ref())?;
         log::debug!("creating directory {}", path.display());
-        fs::create_dir(path)
+        fs::create_dir_all(path)
     }
 
     /// Remove a subdirectory.
     pub fn remove_dir(&self, name: impl AsRef<Path>) -> Result<()> {
-        let path = self.property_path(name)?;
+        let path = self.property_path(name.as_ref())?;
         log::debug!("removing directory {}", path.display());
         fs::remove_dir(path)
     }
 
     /// Read a binary property.
     pub fn read(&self, name: impl AsRef<Path>) -> Result<Vec<u8>> {
-        let path = self.property_path(name)?;
+        let path = self.property_path(name.as_ref())?;
         let res = fs::read(&path);
 
         match &res {
@@ -244,9 +244,10 @@ impl FunctionDir {
 
     /// Write a property.
     pub fn write(&self, name: impl AsRef<Path>, value: impl AsRef<[u8]>) -> Result<()> {
-        let path = self.property_path(name)?;
+        let path = self.property_path(name.as_ref())?;
         let value = value.as_ref();
         log::debug!("setting property {} to {}", path.display(), String::from_utf8_lossy(value));
+        name.as_ref().parent().map_or(Ok(()), |directory| self.create_dir(directory))?;
         fs::write(path, value)
     }
 }
