@@ -239,10 +239,9 @@ impl Config {
         for func in &self.functions {
             let func_dir = &func_dirs[func];
             log::debug!("adding function {}", func_dir.display());
-            println!("linking {:?} to {:?}", func_dir, dir.join(func_dir.file_name().unwrap()));
             symlink(func_dir, dir.join(func_dir.file_name().unwrap()))?;
-            println!("linked");
         }
+
         Ok(dir)
     }
 }
@@ -518,7 +517,6 @@ impl RegGadget {
             None => "\n".into(),
         };
 
-        println!("{:?} : {:?}", self.dir.join("UDC"), name);
         match fs::write(self.dir.join("UDC"), name.as_bytes()) {
             Ok(()) => (),
             Err(err) if udc.is_none() && err.raw_os_error() == Some(Errno::ENODEV as i32) => (),

@@ -3,13 +3,17 @@
 //! The Linux kernel configuration option `CONFIG_USB_CONFIGFS_F_UVC` must be enabled.
 
 use std::{
-    ffi::OsString, io::{Error, Result}, os::unix::fs::symlink, path::PathBuf
+    ffi::{OsStr, OsString}, fs, io::Result, os::unix::fs::symlink, path::PathBuf
 };
 
 use super::{
     util::FunctionDir,
     Function, Handle,
 };
+
+pub(crate) fn driver() -> &'static OsStr {
+    OsStr::new("uvc")
+}
 
 #[derive(Debug, Clone)]
 pub struct Frame {
@@ -68,7 +72,7 @@ fn add_unix_line_ending(str: &String) -> String {
 
 impl Function for UvcFunction {
     fn driver(&self) -> OsString {
-        "uvc".into()
+        driver().into()
     }
 
     fn dir(&self) -> FunctionDir {
@@ -76,7 +80,7 @@ impl Function for UvcFunction {
     }
 
     fn register(&self) -> Result<()> {
-        self.dir.create_dir("streaming/header/h").expect("AAAAA");
+        self.dir.create_dir("streaming/header/h")?;
         let mut sym_links: Vec<(PathBuf, PathBuf)> = Vec::new();
 
         self.dir.write("streaming_interval", "1\n".as_bytes())?;
@@ -130,10 +134,8 @@ impl Function for UvcFunction {
         for (original, link) in &sym_links {
             let original = self.dir.property_path(original)?;
             let link = self.dir.property_path(link)?;
-            println!("Linking {:?} to {:?}", original, link);
-            symlink(original, link).expect("DDDD")
+            symlink(original, link)?;
         }
-        println!("LINKING COMPLETE");
         Ok(())
     }
 }
@@ -147,4 +149,29 @@ impl Uvc {
     pub fn builder() -> UvcBuilder {
         return UvcBuilder { frames: Vec::new() };
     }
+}
+
+fn walk_and_delete(dir: PathBuf) -> Result<()> {
+    for path in fs::read_dir(dir)? {
+        let Ok(path) = path else { continue };
+        let path = path.path();
+        if path.exists() && path.is_symlink() {
+            fs::remove_file(path)?;
+        } else if path.is_dir() {
+            walk_and_delete(path.clone())?;
+            let _ = fs::remove_dir(path);
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn remove_handler(dir: PathBuf) -> Result<()> {
+    walk_and_delete(dir.join("control/class"))?;
+    walk_and_delete(dir.join("streaming/class"))?;
+    walk_and_delete(dir.join("streaming/header"))?;
+
+    walk_and_delete(dir.join("streaming"))?;
+
+    walk_and_delete(dir.join("control/header"))?;
+    Ok(())
 }
