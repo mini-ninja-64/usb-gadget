@@ -7,6 +7,7 @@ pub mod net;
 pub mod other;
 pub mod serial;
 pub mod util;
+pub mod uvc;
 
 use std::{cmp, hash, hash::Hash, sync::Arc};
 
