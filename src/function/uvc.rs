@@ -3,11 +3,11 @@
 //! The Linux kernel configuration option `CONFIG_USB_CONFIGFS_F_UVC` must be enabled.
 
 use std::{
-    ffi::{OsStr, OsString}, fs, io::Result, os::unix::fs::symlink, path::PathBuf
+    ffi::{OsStr, OsString}, fs::{self, File}, io::{Error, Result}, os::unix::fs::symlink, path::{Path, PathBuf}
 };
 
 use super::{
-    util::FunctionDir,
+    util::{FunctionDir, Status},
     Function, Handle,
 };
 
@@ -43,10 +43,6 @@ impl UvcBuilder {
         self
     }
 
-    // pub fn build(&mut self) -> (Other, Handle) {
-    //         let (other, handle) = self.builder.to_owned().build();
-    //         return (other, handle);
-    // }
 
     /// Build the USB function.
     ///
@@ -148,6 +144,66 @@ pub struct Uvc {
 impl Uvc {
     pub fn builder() -> UvcBuilder {
         return UvcBuilder { frames: Vec::new() };
+    }
+
+    pub fn status(&self) -> Status {
+        self.dir.status()
+    }
+
+    pub fn get_v4l_device(&self) -> Result<()> {
+        let gadget_name = self.dir.dir()?
+            .parent()
+            .and_then(|g| g.parent())
+            .and_then(|p| p.file_name())
+            .ok_or(Error::new(std::io::ErrorKind::InvalidData,"TODO: problem"))?
+            .to_owned();
+        let libcomposite_driver_path = format!("/sys/module/libcomposite/drivers/gadget:configfs-gadget.{}", gadget_name.to_string_lossy());
+
+        let v4l_path = fs::read_dir(libcomposite_driver_path)?
+            .filter_map(|path_result| path_result.ok()
+                .map(|path| path.path())
+            )
+            .filter(|path| path.file_name().filter(|x| x.to_string_lossy().starts_with("gadget.")).is_some())
+            .next()
+            .map(|bound_gadget| bound_gadget.join("video4linux"));
+
+        println!("{:?}", v4l_path);
+
+        // ./module/libcomposite/drivers/gadget:configfs-gadget.usb-gadget24/gadget.0
+        // let udc_name = self.dir.dir()?
+        //     .parent()
+        //     .and_then(|g| g.parent())
+        //     .map(|g| g.join("/UDC"))
+        //     .map(|path| fs::read_to_string(path))
+        //     .ok_or(Error::new(std::io::ErrorKind::InvalidData,"TODO: problem"))
+        //     .and_then(|i| i)?;
+        // let udc_name = udc_name.trim();
+        // let udc_path = format!("/sys/class/udc/{}", udc_name);
+        
+        // // /sys/class/udc/UDC_NAME/device/GADGET_NAME/video4linux
+        // // format!("/sys/class/udc/{}/device/{}/video4linux", self.dir.dir());
+        // let gadget_names = fs::read_dir(udc_path)?
+        //     .filter_map(|path_result| 
+        //          path_result
+        //             .map(|d| d.path().as_path().to_owned())
+        //             .ok()
+        //     )
+        //     .filter_map(|path| path.file_name()
+        //         .filter(|_| path.is_dir())
+        //         .and_then(|p| p.to_str())
+        //         .map(|p| p.to_owned())
+        //     );
+        // for gadget_name in gadget_names {
+        //     let v4l_path = format!("/sys/class/udc/{}/device/{}/video4linux", udc_name, gadget_name);
+        // }
+        //     // .map(|p| Path::new(p))
+            // .filter(|p| p.is_dir());
+        // println!("/sys/class/udc/{}/device", udc_name);
+        Ok(())
+        // fs::read_dir(path)
+        // ret = asprintf(&vpath,
+        //     "/sys/class/udc/%s/device/gadget/video4linux/video*",
+        //     udc ? udc : "*");
     }
 }
 

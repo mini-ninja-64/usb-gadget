@@ -24,6 +24,7 @@ fn uvc() {
     let (uvc, func) = builder.build();
 
     let reg = reg(func);
+    _ = uvc.get_v4l_device();
     wait();
     unreg(reg).unwrap();
 }
