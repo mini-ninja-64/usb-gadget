@@ -24,7 +24,8 @@ fn uvc() {
     let (uvc, func) = builder.build();
 
     let reg = reg(func);
-    _ = uvc.get_v4l_device();
+    let p = uvc.get_v4l_device();
+    println!("v4l_dev: {}", p.unwrap().display());
     wait();
     unreg(reg).unwrap();
 }
